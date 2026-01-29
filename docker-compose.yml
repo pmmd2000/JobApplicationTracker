@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: job_tracker_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - proxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: job_tracker_backend
+    environment:
+      FLASK_ENV: ${FLASK_ENV}
+      SECRET_KEY: ${SECRET_KEY}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      BACKEND_CORS_ORIGIN: ${BACKEND_CORS_ORIGIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - proxy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: job_tracker_frontend
+    environment:
+      APP_HOST: ${APP_HOST}
+    depends_on:
+      - backend
+    networks:
+      - proxy
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+
+      # Router
+      - "traefik.http.routers.jobs.rule=Host(`jobs.parhammonfared.com`)"
+      - "traefik.http.routers.jobs.entrypoints=websecure"
+      - "traefik.http.routers.jobs.tls.certresolver=le"
+      - "traefik.http.routers.jobs.service=jobs-service"
+
+      # Service
+      - "traefik.http.services.jobs-service.loadbalancer.server.port=80"
+
+volumes:
+  pg_data:
+    name: job_tracker_pg_data
+
+networks:
+  proxy:
+    external: true
