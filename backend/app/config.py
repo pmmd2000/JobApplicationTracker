@@ -26,6 +26,10 @@ class Config:
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_UPLOAD_SIZE', 10 * 1024 * 1024)) # Default 10MB
     ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc'}
     
+    # Google OAuth
+    GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+    GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+    
     # Validation
     if not SECRET_KEY:
         raise ValueError("No SECRET_KEY set for Flask application")
@@ -35,6 +39,11 @@ class Config:
     
     # CORS
     CORS_ORIGIN = os.getenv('BACKEND_CORS_ORIGIN', 'http://localhost:8080')
+
+    # Session Configuration
+    SESSION_COOKIE_SECURE = True  # Always True behind Traefik/HTTPS
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
 
 
 class DevelopmentConfig(Config):

@@ -2,12 +2,36 @@ from datetime import datetime, date
 from .database import db
 
 
+class User(db.Model):
+    """User model for OAuth."""
+    __tablename__ = 'users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    google_id = db.Column(db.String(100), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    avatar_url = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    # Relationship
+    applications = db.relationship('JobApplication', backref='user', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'name': self.name,
+            'avatar_url': self.avatar_url
+        }
+
+
 class JobApplication(db.Model):
     """Job Application model."""
     
     __tablename__ = 'job_applications'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # Nullable for transition
     company_name = db.Column(db.String(200), nullable=False)
     position_title = db.Column(db.String(200), nullable=False)
     location = db.Column(db.String(200), nullable=True)
@@ -31,6 +55,7 @@ class JobApplication(db.Model):
         """Convert model instance to dictionary."""
         return {
             'id': self.id,
+            'user_id': self.user_id,
             'company_name': self.company_name,
             'position_title': self.position_title,
             'location': self.location,

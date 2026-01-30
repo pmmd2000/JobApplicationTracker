@@ -1,11 +1,24 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session, current_app, send_file
 from datetime import datetime, date
+from functools import wraps
+from werkzeug.utils import secure_filename
+import os
+
 from .database import db
 from .models import JobApplication
 
 # Create blueprint for API routes
 api = Blueprint('api', __name__, url_prefix='/api')
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': 'Unauthorized', 'authenticated': False}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Health Check (Public) ---
 
 @api.route('/health', methods=['GET'])
 def health_check():
@@ -13,29 +26,40 @@ def health_check():
     return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()}), 200
 
 
+# --- Application Routes (Protected) ---
+
 @api.route('/applications', methods=['GET'])
+@login_required
 def get_applications():
-    """Get all job applications."""
+    """Get all job applications for the current user."""
     try:
-        applications = JobApplication.query.order_by(JobApplication.application_date.desc()).all()
+        user_id = session['user_id']
+        applications = JobApplication.query.filter_by(user_id=user_id).order_by(JobApplication.application_date.desc()).all()
         return jsonify([app.to_dict() for app in applications]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
 @api.route('/applications/<int:app_id>', methods=['GET'])
+@login_required
 def get_application(app_id):
     """Get a single job application by ID."""
     try:
         application = JobApplication.query.get(app_id)
         if not application:
             return jsonify({'error': 'Application not found'}), 404
+        
+        # Verify ownership
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
+            
         return jsonify(application.to_dict()), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
 @api.route('/applications', methods=['POST'])
+@login_required
 def create_application():
     """Create a new job application."""
     try:
@@ -57,6 +81,7 @@ def create_application():
         
         # Create new application
         application = JobApplication(
+            user_id=session['user_id'],
             company_name=data['company_name'],
             position_title=data['position_title'],
             location=data.get('location'),
@@ -78,12 +103,17 @@ def create_application():
 
 
 @api.route('/applications/<int:app_id>', methods=['PUT'])
+@login_required
 def update_application(app_id):
     """Update an existing job application."""
     try:
         application = JobApplication.query.get(app_id)
         if not application:
             return jsonify({'error': 'Application not found'}), 404
+            
+        # Verify ownership
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
         
         data = request.get_json()
         
@@ -126,25 +156,30 @@ def update_application(app_id):
 
 
 @api.route('/applications/<int:app_id>', methods=['DELETE'])
+@login_required
 def delete_application(app_id):
     """Delete a job application."""
     try:
         application = JobApplication.query.get(app_id)
         if not application:
             return jsonify({'error': 'Application not found'}), 404
+            
+        # Verify ownership
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
         
         # Delete associated files if they exist
         if application.resume_path and os.path.exists(application.resume_path):
             try:
                 os.remove(application.resume_path)
             except OSError:
-                pass # Log error
+                pass 
                 
         if application.cover_letter_path and os.path.exists(application.cover_letter_path):
             try:
                 os.remove(application.cover_letter_path)
             except OSError:
-                pass # Log error
+                pass 
         
         db.session.delete(application)
         db.session.commit()
@@ -155,11 +190,7 @@ def delete_application(app_id):
         return jsonify({'error': str(e)}), 500
 
 
-# --- File Upload Utilities (Phase 2) ---
-
-from werkzeug.utils import secure_filename
-from flask import send_file, current_app
-import os
+# --- File Upload Utilities ---
 
 def allowed_file(filename):
     """Check if file extension is allowed."""
@@ -191,12 +222,16 @@ def save_document(file, app_id, doc_type):
 # --- Resume Endpoints ---
 
 @api.route('/applications/<int:app_id>/resume', methods=['POST'])
+@login_required
 def upload_resume(app_id):
     """Upload a resume for an application."""
     try:
         application = JobApplication.query.get(app_id)
         if not application:
             return jsonify({'error': 'Application not found'}), 404
+        
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
             
         if 'file' not in request.files:
             return jsonify({'error': 'No file part'}), 400
@@ -208,7 +243,7 @@ def upload_resume(app_id):
         except ValueError as e:
             return jsonify({'error': str(e)}), 400
             
-        # Delete old file if exists
+        # Delete old file
         if application.resume_path and os.path.exists(application.resume_path):
             try:
                 os.remove(application.resume_path)
@@ -224,12 +259,16 @@ def upload_resume(app_id):
         return jsonify({'error': str(e)}), 500
 
 @api.route('/applications/<int:app_id>/resume', methods=['GET'])
+@login_required
 def download_resume(app_id):
     """Download the resume."""
     try:
         application = JobApplication.query.get(app_id)
         if not application or not application.resume_path:
             return jsonify({'error': 'Resume not found'}), 404
+        
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
             
         if not os.path.exists(application.resume_path):
             return jsonify({'error': 'File not found on server'}), 404
@@ -243,12 +282,16 @@ def download_resume(app_id):
         return jsonify({'error': str(e)}), 500
 
 @api.route('/applications/<int:app_id>/resume', methods=['DELETE'])
+@login_required
 def delete_resume(app_id):
     """Delete the resume."""
     try:
         application = JobApplication.query.get(app_id)
         if not application:
             return jsonify({'error': 'Application not found'}), 404
+        
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
             
         if application.resume_path and os.path.exists(application.resume_path):
             try:
@@ -268,12 +311,16 @@ def delete_resume(app_id):
 # --- Cover Letter Endpoints ---
 
 @api.route('/applications/<int:app_id>/cover-letter', methods=['POST'])
+@login_required
 def upload_cover_letter(app_id):
     """Upload a cover letter."""
     try:
         application = JobApplication.query.get(app_id)
         if not application:
             return jsonify({'error': 'Application not found'}), 404
+        
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
             
         if 'file' not in request.files:
             return jsonify({'error': 'No file part'}), 400
@@ -285,7 +332,7 @@ def upload_cover_letter(app_id):
         except ValueError as e:
             return jsonify({'error': str(e)}), 400
             
-        # Delete old file if exists
+        # Delete old file
         if application.cover_letter_path and os.path.exists(application.cover_letter_path):
             try:
                 os.remove(application.cover_letter_path)
@@ -301,12 +348,16 @@ def upload_cover_letter(app_id):
         return jsonify({'error': str(e)}), 500
 
 @api.route('/applications/<int:app_id>/cover-letter', methods=['GET'])
+@login_required
 def download_cover_letter(app_id):
     """Download the cover letter."""
     try:
         application = JobApplication.query.get(app_id)
         if not application or not application.cover_letter_path:
             return jsonify({'error': 'Cover letter not found'}), 404
+        
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
             
         if not os.path.exists(application.cover_letter_path):
             return jsonify({'error': 'File not found on server'}), 404
@@ -320,12 +371,16 @@ def download_cover_letter(app_id):
         return jsonify({'error': str(e)}), 500
 
 @api.route('/applications/<int:app_id>/cover-letter', methods=['DELETE'])
+@login_required
 def delete_cover_letter(app_id):
     """Delete the cover letter."""
     try:
         application = JobApplication.query.get(app_id)
         if not application:
             return jsonify({'error': 'Application not found'}), 404
+        
+        if application.user_id != session['user_id']:
+            return jsonify({'error': 'Unauthorized'}), 403
             
         if application.cover_letter_path and os.path.exists(application.cover_letter_path):
             try:

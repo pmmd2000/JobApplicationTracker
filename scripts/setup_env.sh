@@ -46,6 +46,13 @@ read -p "Enter Google Tag Manager ID (optional) []: " GTM_ID
 GTM_ID=${GTM_ID:-}
 
 echo
+echo "--- Google OAuth Configuration ---"
+echo "You must created a project in Google Cloud Console to get these values."
+read -p "Enter Google Client ID: " GOOGLE_CLIENT_ID
+read -p "Enter Google Client Secret: " GOOGLE_CLIENT_SECRET
+APP_ENV=${APP_ENV:-development} # Preserve default if needed
+
+echo
 echo "✅ Creating .env file..."
 
 # Create .env file from .env.example
@@ -66,7 +73,18 @@ else
     sed -i "s|SECRET_KEY=.*|SECRET_KEY=$SECRET_KEY|" "$ENV_FILE"
     sed -i "s|GTM_ID=.*|GTM_ID=$GTM_ID|" "$ENV_FILE"
     sed -i "s|BACKEND_CORS_ORIGIN=.*|BACKEND_CORS_ORIGIN=http://$APP_HOST|" "$ENV_FILE"
+    sed -i "s|BACKEND_CORS_ORIGIN=.*|BACKEND_CORS_ORIGIN=http://$APP_HOST|" "$ENV_FILE"
 fi
+
+# Append Google OAuth
+cat <<EOF >> "$ENV_FILE"
+
+# Google OAuth
+GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+EOF
+
+echo
 
 echo
 echo "=================================="

@@ -4,6 +4,7 @@ agents.md
 
 # --- Environment Variables & Secrets ---
 .env
+.env copy
 .env.local
 .env.*.local
 *.secret

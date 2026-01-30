@@ -23,5 +23,7 @@ app.use(PrimeVue, {
 
 app.use(ToastService)
 app.use(ConfirmationService)
+import router from './router'
+app.use(router)
 
 app.mount('#app')

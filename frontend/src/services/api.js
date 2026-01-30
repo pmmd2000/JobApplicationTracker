@@ -95,5 +95,14 @@ export default {
 
     getCoverLetterUrl(id) {
         return `/api/applications/${id}/cover-letter`
+    },
+
+    async checkAuth() {
+        try {
+            const response = await apiClient.get('/auth/me');
+            return response.data;
+        } catch (error) {
+            return { authenticated: false };
+        }
     }
 }
