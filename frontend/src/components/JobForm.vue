@@ -99,14 +99,38 @@
         />
       </div>
 
-      <div class="field">
-        <label for="notes">Notes</label>
-        <Textarea 
-          id="notes"
-          v-model="formData.notes"
-          rows="3"
-          placeholder="Add any notes about this application..."
-        />
+      <div class="col-span-2">
+          <label for="notes" class="block font-bold mb-2 text-surface-700 dark:text-surface-200">Notes (Optional)</label>
+          <Textarea 
+              id="notes" 
+              v-model="formData.notes" 
+              rows="3" 
+              class="w-full"
+              placeholder="Key contacts, salary info, specific requirements..."
+          />
+      </div>
+
+      <!-- Phase 2: Document Uploads -->
+      <div class="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          <FileUpload
+              v-model="resumeFile"
+              :existing-file="existingResume"
+              label="Resume"
+              accept=".pdf,.docx,.doc"
+              :required="false"
+              :download-url="getResumeUrl(application?.id)"
+              @remove-existing="deleteResumeFile"
+          />
+          
+          <FileUpload
+              v-model="coverLetterFile"
+              :existing-file="existingCoverLetter"
+              label="Cover Letter"
+              accept=".pdf,.docx,.doc"
+              :required="false"
+              :download-url="getCoverLetterUrl(application?.id)"
+              @remove-existing="deleteCoverLetterFile"
+          />
       </div>
     </div>
 
@@ -137,6 +161,7 @@ import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
+import FileUpload from './FileUpload.vue'
 import api from '../services/api'
 
 const props = defineProps({
@@ -154,6 +179,45 @@ const dialogVisible = computed({
 })
 
 const isEdit = computed(() => !!props.application?.id)
+
+// File Upload State
+const resumeFile = ref(null)
+const coverLetterFile = ref(null)
+
+const existingResume = computed(() => props.application?.resume_filename)
+const existingCoverLetter = computed(() => props.application?.cover_letter_filename)
+
+function getResumeUrl(id) {
+    if (!id) return '#'
+    return api.getResumeUrl(id)
+}
+
+function getCoverLetterUrl(id) {
+    if (!id) return '#'
+    return api.getCoverLetterUrl(id)
+}
+
+async function deleteResumeFile() {
+    if (!props.application?.id) return
+    try {
+        await api.deleteResume(props.application.id)
+        emit('saved') // Refresh parent data
+        toast.add({ severity: 'success', summary: 'Success', detail: 'Resume deleted', life: 3000 })
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete resume', life: 3000 })
+    }
+}
+
+async function deleteCoverLetterFile() {
+    if (!props.application?.id) return
+    try {
+        await api.deleteCoverLetter(props.application.id)
+        emit('saved') // Refresh parent data
+        toast.add({ severity: 'success', summary: 'Success', detail: 'Cover letter deleted', life: 3000 })
+    } catch (error) {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete cover letter', life: 3000 })
+    }
+}
 
 const jobTypes = ref([
   'Full-time',
@@ -216,6 +280,9 @@ watch(() => props.application, (newVal) => {
   } else {
     resetForm()
   }
+  // Reset file inputs when dialog opens/application changes
+  resumeFile.value = null
+  coverLetterFile.value = null
 }, { immediate: true })
 
 function resetForm() {
@@ -231,6 +298,8 @@ function resetForm() {
     notes: ''
   }
   submitted.value = false
+  resumeFile.value = null
+  coverLetterFile.value = null
 }
 
 function closeDialog() {
@@ -255,23 +324,36 @@ async function saveApplication() {
         : formData.value.application_date
     }
 
+    let appId = props.application?.id
+    let isNew = false
+
     if (isEdit.value) {
-      await api.updateApplication(props.application.id, payload)
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Application updated successfully',
-        life: 3000
-      })
+      await api.updateApplication(appId, payload)
     } else {
-      await api.createApplication(payload)
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Application created successfully',
-        life: 3000
-      })
+      const response = await api.createApplication(payload)
+      appId = response.id
+      isNew = true
     }
+
+    // Handle File Uploads
+    const uploadPromises = []
+    if (resumeFile.value) {
+        uploadPromises.push(api.uploadResume(appId, resumeFile.value))
+    }
+    if (coverLetterFile.value) {
+        uploadPromises.push(api.uploadCoverLetter(appId, coverLetterFile.value))
+    }
+    
+    if (uploadPromises.length > 0) {
+        await Promise.all(uploadPromises)
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: isNew ? 'Application created successfully' : 'Application updated successfully',
+      life: 3000
+    })
 
     emit('saved')
     closeDialog()

@@ -35,19 +35,60 @@
           <Column field="company_name" header="Company" sortable></Column>
           <Column field="position_title" header="Position" sortable></Column>
           <Column field="location" header="Location" sortable></Column>
-          <Column field="status" header="Status" sortable>
+          <Column field="status" header="Status" sortable style="min-width: 150px">
             <template #body="slotProps">
-              <Tag 
-                :value="slotProps.data.status" 
-                :severity="getStatusSeverity(slotProps.data.status)"
-              />
+              <Select 
+                v-model="slotProps.data.status" 
+                :options="statuses"
+                @change="(e) => updateStatus(slotProps.data, e.value)"
+                class="w-full p-inputtext-sm"
+              >
+                <template #value="slotProps">
+                    <Tag 
+                        v-if="slotProps.value" 
+                        :value="slotProps.value" 
+                        :severity="getStatusSeverity(slotProps.value)" 
+                    />
+                    <span v-else>{{ slotProps.placeholder }}</span>
+                </template>
+                <template #option="slotProps">
+                    <Tag :value="slotProps.option" :severity="getStatusSeverity(slotProps.option)" />
+                </template>
+              </Select>
             </template>
           </Column>
-          <Column field="application_date" header="Applied Date" sortable>
+          <Column header="Applied Date" field="application_date" sortable>
             <template #body="slotProps">
               {{ formatDate(slotProps.data.application_date) }}
             </template>
           </Column>
+
+          <!-- Phase 2: Documents Column -->
+          <Column header="Documents">
+            <template #body="slotProps">
+                <div class="flex gap-2">
+                    <a 
+                        v-if="slotProps.data.resume_path" 
+                        :href="getResumeUrl(slotProps.data.id)" 
+                        target="_blank"
+                        class="text-primary-500 hover:text-primary-700"
+                        v-tooltip.top="'Resume'"
+                    >
+                        <i class="pi pi-file-pdf text-xl"></i>
+                    </a>
+                    <a 
+                        v-if="slotProps.data.cover_letter_path" 
+                        :href="getCoverLetterUrl(slotProps.data.id)" 
+                        target="_blank"
+                        class="text-primary-500 hover:text-primary-700"
+                        v-tooltip.top="'Cover Letter'"
+                    >
+                        <i class="pi pi-file text-xl"></i>
+                    </a>
+                </div>
+            </template>
+          </Column>
+
           <Column header="Actions" :exportable="false">
             <template #body="slotProps">
               <div class="action-buttons">
@@ -92,6 +133,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import Select from 'primevue/select'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Tooltip from 'primevue/tooltip'
 import JobForm from './JobForm.vue'
@@ -105,10 +147,47 @@ const loading = ref(false)
 const showDialog = ref(false)
 const selectedApplication = ref(null)
 
+const statuses = ref([
+  'Applied',
+  'Interviewing',
+  'Offered',
+  'Rejected',
+  'Withdrawn'
+])
+
 // Load applications on mount
 onMounted(() => {
   loadApplications()
 })
+
+function getResumeUrl(id) {
+    return api.getResumeUrl(id)
+}
+
+function getCoverLetterUrl(id) {
+    return api.getCoverLetterUrl(id)
+}
+
+async function updateStatus(application, newStatus) {
+    try {
+        await api.updateApplication(application.id, { status: newStatus });
+        toast.add({
+            severity: 'success',
+            summary: 'Status Updated',
+            detail: `Application status changed to ${newStatus}`,
+            life: 3000
+        });
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to update status',
+            life: 3000
+        });
+        // Revert on error (reload list)
+        loadApplications();
+    }
+}
 
 async function loadApplications() {
   loading.value = true

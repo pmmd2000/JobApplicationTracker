@@ -133,10 +133,210 @@ def delete_application(app_id):
         if not application:
             return jsonify({'error': 'Application not found'}), 404
         
+        # Delete associated files if they exist
+        if application.resume_path and os.path.exists(application.resume_path):
+            try:
+                os.remove(application.resume_path)
+            except OSError:
+                pass # Log error
+                
+        if application.cover_letter_path and os.path.exists(application.cover_letter_path):
+            try:
+                os.remove(application.cover_letter_path)
+            except OSError:
+                pass # Log error
+        
         db.session.delete(application)
         db.session.commit()
         
         return jsonify({'message': 'Application deleted successfully'}), 200
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+# --- File Upload Utilities (Phase 2) ---
+
+from werkzeug.utils import secure_filename
+from flask import send_file, current_app
+import os
+
+def allowed_file(filename):
+    """Check if file extension is allowed."""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
+
+def save_document(file, app_id, doc_type):
+    """Common logic to save a document."""
+    if file.filename == '':
+        raise ValueError('No selected file')
+        
+    if not allowed_file(file.filename):
+        raise ValueError('File type not allowed')
+        
+    filename = secure_filename(file.filename)
+    # Create unique filename: {app_id}_{timestamp}_{filename}
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    unique_filename = f"{app_id}_{timestamp}_{doc_type}_{filename}"
+    
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+        
+    file_path = os.path.join(upload_folder, unique_filename)
+    file.save(file_path)
+    
+    return file_path, filename
+
+# --- Resume Endpoints ---
+
+@api.route('/applications/<int:app_id>/resume', methods=['POST'])
+def upload_resume(app_id):
+    """Upload a resume for an application."""
+    try:
+        application = JobApplication.query.get(app_id)
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+            
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        
+        try:
+            file_path, filename = save_document(file, app_id, 'resume')
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+            
+        # Delete old file if exists
+        if application.resume_path and os.path.exists(application.resume_path):
+            try:
+                os.remove(application.resume_path)
+            except OSError:
+                pass
+
+        application.resume_path = file_path
+        application.resume_filename = filename
+        db.session.commit()
+        
+        return jsonify(application.to_dict()), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/applications/<int:app_id>/resume', methods=['GET'])
+def download_resume(app_id):
+    """Download the resume."""
+    try:
+        application = JobApplication.query.get(app_id)
+        if not application or not application.resume_path:
+            return jsonify({'error': 'Resume not found'}), 404
+            
+        if not os.path.exists(application.resume_path):
+            return jsonify({'error': 'File not found on server'}), 404
+            
+        return send_file(
+            application.resume_path,
+            as_attachment=True,
+            download_name=application.resume_filename
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/applications/<int:app_id>/resume', methods=['DELETE'])
+def delete_resume(app_id):
+    """Delete the resume."""
+    try:
+        application = JobApplication.query.get(app_id)
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+            
+        if application.resume_path and os.path.exists(application.resume_path):
+            try:
+                os.remove(application.resume_path)
+            except OSError:
+                pass
+                
+        application.resume_path = None
+        application.resume_filename = None
+        db.session.commit()
+        
+        return jsonify({'message': 'Resume deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# --- Cover Letter Endpoints ---
+
+@api.route('/applications/<int:app_id>/cover-letter', methods=['POST'])
+def upload_cover_letter(app_id):
+    """Upload a cover letter."""
+    try:
+        application = JobApplication.query.get(app_id)
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+            
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        
+        try:
+            file_path, filename = save_document(file, app_id, 'cover_letter')
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+            
+        # Delete old file if exists
+        if application.cover_letter_path and os.path.exists(application.cover_letter_path):
+            try:
+                os.remove(application.cover_letter_path)
+            except OSError:
+                pass
+
+        application.cover_letter_path = file_path
+        application.cover_letter_filename = filename
+        db.session.commit()
+        
+        return jsonify(application.to_dict()), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/applications/<int:app_id>/cover-letter', methods=['GET'])
+def download_cover_letter(app_id):
+    """Download the cover letter."""
+    try:
+        application = JobApplication.query.get(app_id)
+        if not application or not application.cover_letter_path:
+            return jsonify({'error': 'Cover letter not found'}), 404
+            
+        if not os.path.exists(application.cover_letter_path):
+            return jsonify({'error': 'File not found on server'}), 404
+            
+        return send_file(
+            application.cover_letter_path,
+            as_attachment=True,
+            download_name=application.cover_letter_filename
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/applications/<int:app_id>/cover-letter', methods=['DELETE'])
+def delete_cover_letter(app_id):
+    """Delete the cover letter."""
+    try:
+        application = JobApplication.query.get(app_id)
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+            
+        if application.cover_letter_path and os.path.exists(application.cover_letter_path):
+            try:
+                os.remove(application.cover_letter_path)
+            except OSError:
+                pass
+                
+        application.cover_letter_path = None
+        application.cover_letter_filename = None
+        db.session.commit()
+        
+        return jsonify({'message': 'Cover letter deleted'}), 200
+    except Exception as e:
         return jsonify({'error': str(e)}), 500

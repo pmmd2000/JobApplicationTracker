@@ -34,6 +34,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
     networks:
       - proxy
     restart: unless-stopped
@@ -65,6 +67,8 @@ services:
 volumes:
   pg_data:
     name: job_tracker_pg_data
+  uploads:
+    name: job_tracker_uploads
 
 networks:
   proxy:

@@ -18,11 +18,18 @@ class Config:
     POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'postgres')
     POSTGRES_PORT = os.getenv('POSTGRES_PORT', '5432')
     POSTGRES_DB = os.getenv('POSTGRES_DB', 'job_tracker')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+        f"postgresql://{os.environ.get('POSTGRES_USER')}:{os.environ.get('POSTGRES_PASSWORD')}@{os.environ.get('POSTGRES_HOST')}:{os.environ.get('POSTGRES_PORT')}/{os.environ.get('POSTGRES_DB')}"
     
-    SQLALCHEMY_DATABASE_URI = (
-        f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@"
-        f"{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-    )
+    # File Uploads
+    UPLOAD_FOLDER = os.environ.get('UPLOAD_DIR', '/app/uploads')
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_UPLOAD_SIZE', 10 * 1024 * 1024)) # Default 10MB
+    ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc'}
+    
+    # Validation
+    if not SECRET_KEY:
+        raise ValueError("No SECRET_KEY set for Flask application")
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = FLASK_ENV == 'development'
     

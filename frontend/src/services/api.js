@@ -57,5 +57,43 @@ export default {
     async deleteApplication(id) {
         const response = await apiClient.delete(`/applications/${id}`)
         return response.data
+    },
+
+    // --- Document Management ---
+
+    async uploadResume(id, file) {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await apiClient.post(`/applications/${id}/resume`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        return response.data
+    },
+
+    async deleteResume(id) {
+        const response = await apiClient.delete(`/applications/${id}/resume`)
+        return response.data
+    },
+
+    async uploadCoverLetter(id, file) {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await apiClient.post(`/applications/${id}/cover-letter`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        return response.data
+    },
+
+    async deleteCoverLetter(id) {
+        const response = await apiClient.delete(`/applications/${id}/cover-letter`)
+        return response.data
+    },
+
+    getResumeUrl(id) {
+        return `/api/applications/${id}/resume`
+    },
+
+    getCoverLetterUrl(id) {
+        return `/api/applications/${id}/cover-letter`
     }
 }

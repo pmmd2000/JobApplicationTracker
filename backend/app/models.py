@@ -15,8 +15,15 @@ class JobApplication(db.Model):
     job_level = db.Column(db.String(50), nullable=True)
     application_date = db.Column(db.Date, nullable=False, default=date.today)
     status = db.Column(db.String(50), nullable=False, default='Applied')
-    job_description = db.Column(db.Text, nullable=True)
-    notes = db.Column(db.Text, nullable=True)
+    job_description = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    
+    # File Uploads (Phase 2)
+    resume_path = db.Column(db.String(500))
+    resume_filename = db.Column(db.String(200))
+    cover_letter_path = db.Column(db.String(500))
+    cover_letter_filename = db.Column(db.String(200))
+
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -33,6 +40,10 @@ class JobApplication(db.Model):
             'status': self.status,
             'job_description': self.job_description,
             'notes': self.notes,
+            'resume_path': self.resume_path,
+            'resume_filename': self.resume_filename,
+            'cover_letter_path': self.cover_letter_path,
+            'cover_letter_filename': self.cover_letter_filename,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
