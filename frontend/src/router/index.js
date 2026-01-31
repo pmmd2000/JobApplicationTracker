@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import JobList from '../components/JobList.vue'
-import Login from '../views/Login.vue'
+const JobList = () => import('../components/JobList.vue')
+const Login = () => import('../views/Login.vue')
 import api from '../services/api'
 
 const routes = [

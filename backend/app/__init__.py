@@ -21,6 +21,10 @@ def create_app():
     # Configure CORS
     CORS(app, origins=[app.config['CORS_ORIGIN']], supports_credentials=True)
     
+    # Initialize compression
+    from flask_compress import Compress
+    Compress(app)
+    
     # Initialize database and oauth
     init_db(app)
     from .extensions import oauth
