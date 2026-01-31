@@ -31,6 +31,11 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'set -e' >> /docker-entrypoint.sh && \
     echo 'envsubst "\$APP_HOST" < /etc/nginx/templates/nginx.conf.template > /etc/nginx/conf.d/default.conf' >> /docker-entrypoint.sh && \
+    echo 'if [ -n "$GTM_ID" ]; then' >> /docker-entrypoint.sh && \
+    echo '  sed -i "s|%GTM_ID%|$GTM_ID|g" /usr/share/nginx/html/index.html' >> /docker-entrypoint.sh && \
+    echo 'else' >> /docker-entrypoint.sh && \
+    echo '  sed -i "s|%GTM_ID%||g" /usr/share/nginx/html/index.html' >> /docker-entrypoint.sh && \
+    echo 'fi' >> /docker-entrypoint.sh && \
     echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 
