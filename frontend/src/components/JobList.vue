@@ -290,7 +290,7 @@ function formatDate(dateString) {
 .card-header h2 {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-color);
   margin: 0;
 }
 
@@ -302,7 +302,7 @@ function formatDate(dateString) {
 .empty-state {
   text-align: center;
   padding: 3rem 1rem;
-  color: #64748b;
+  color: var(--text-color-secondary);
 }
 
 .empty-state .pi {

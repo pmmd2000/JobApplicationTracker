@@ -43,16 +43,21 @@ function loginWithGoogle() {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--surface-ground);
   padding: 1rem;
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+}
+
+:global(.app-dark) .login-card {
+  box-shadow: 0 10px 40px rgba(10, 2, 34, 0);
 }
 
 .login-title {
@@ -60,12 +65,12 @@ function loginWithGoogle() {
   font-size: 1.8rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  color: #1e293b;
+  color: var(--text-color);
 }
 
 .login-subtitle {
   text-align: center;
-  color: #64748b;
+  color: var(--text-color-secondary);
   margin-bottom: 1.5rem;
   font-size: 1rem;
 }
@@ -78,21 +83,21 @@ function loginWithGoogle() {
 }
 
 .google-btn {
-  background-color: #4285F4 !important;
-  border-color: #4285F4 !important;
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
   width: 100%;
   justify-content: center;
   font-weight: 500;
 }
 
 .google-btn:hover {
-  background-color: #357ABD !important;
-  border-color: #357ABD !important;
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
 }
 
 .secure-text {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-color-secondary);
   text-align: center;
   margin-top: 1rem;
 }

@@ -383,7 +383,7 @@ async function saveApplication() {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #334155;
+  color: var(--text-color);
 }
 
 .field-group {

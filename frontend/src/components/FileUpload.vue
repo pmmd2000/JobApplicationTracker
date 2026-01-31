@@ -169,7 +169,7 @@ const clearFile = () => {
     color: var(--surface-700);
 }
 
-.dark .upload-label {
+:global(.app-dark) .upload-label {
     color: var(--surface-200);
 }
 
@@ -201,7 +201,7 @@ const clearFile = () => {
     overflow: hidden;
 }
 
-.dark .upload-box {
+:global(.app-dark) .upload-box {
     border-color: var(--surface-700);
     background-color: var(--surface-900);
 }
@@ -233,7 +233,7 @@ const clearFile = () => {
     color: var(--surface-700);
 }
 
-.dark .file-name {
+:global(.app-dark) .file-name {
     color: var(--surface-200);
 }
 
@@ -267,7 +267,7 @@ const clearFile = () => {
     color: var(--surface-700);
 }
 
-.dark .download-link:hover {
+:global(.app-dark) .download-link:hover {
     background-color: var(--surface-800);
     color: var(--surface-200);
 }

@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container" :class="{ 'app-dark': isDarkMode }">
     <Toast />
     <ConfirmDialog />
     <header class="app-header" v-if="!isLoginPage">
@@ -13,9 +13,15 @@
             <p class="subtitle">Track your job applications with ease</p>
         </div>
 
-        <!-- User Section -->
-        <div class="header-right" v-if="user">
-            <div class="user-chip" @click="toggleMenu" aria-haspopup="true" aria-controls="user_menu">
+        <!-- Right Section: Theme Toggle + User -->
+        <div class="header-right">
+            <!-- Theme Toggle -->
+            <button class="theme-toggle" @click="toggleTheme" :aria-label="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'">
+                <i :class="isDarkMode ? 'pi pi-sun' : 'pi pi-moon'"></i>
+            </button>
+
+            <!-- User Menu -->
+            <div class="user-chip" v-if="user" @click="toggleMenu" aria-haspopup="true" aria-controls="user_menu">
                 <Avatar 
                     :image="user.avatar_url" 
                     :label="!user.avatar_url ? user.name[0] : null"
@@ -41,7 +47,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
@@ -54,6 +60,9 @@ const route = useRoute()
 const router = useRouter()
 const user = ref(null)
 const menu = ref(null)
+
+// Dark mode state
+const isDarkMode = ref(false)
 
 const isLoginPage = computed(() => route.path === '/login')
 
@@ -72,6 +81,31 @@ const menuItems = ref([
 
 function toggleMenu(event) {
     menu.value.toggle(event)
+}
+
+function toggleTheme() {
+    isDarkMode.value = !isDarkMode.value
+    localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
+    applyTheme()
+}
+
+function applyTheme() {
+    if (isDarkMode.value) {
+        document.documentElement.classList.add('app-dark')
+    } else {
+        document.documentElement.classList.remove('app-dark')
+    }
+}
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme) {
+        isDarkMode.value = savedTheme === 'dark'
+    } else {
+        // Auto-detect system preference
+        isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+    }
+    applyTheme()
 }
 
 async function checkUser() {
@@ -94,11 +128,14 @@ async function logout() {
 }
 
 onMounted(() => {
+    initTheme()
     checkUser()
 })
 </script>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -107,8 +144,21 @@ onMounted(() => {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: #f8fafc;
-  color: #1e293b;
+  background: var(--surface-ground);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light mode defaults */
+:root {
+  --header-bg: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+  --header-accent: #3b82f6;
+}
+
+/* Dark mode overrides */
+.app-dark {
+  --header-bg: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+  --header-accent: #60a5fa;
 }
 
 .app-container {
@@ -118,11 +168,12 @@ body {
 }
 
 .app-header {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  background: var(--header-bg);
   color: white;
   padding: 1rem 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   z-index: 10;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .header-content {
@@ -147,11 +198,12 @@ body {
 
 .header-left h1 i {
   font-size: 1.75rem;
+  color: var(--header-accent);
 }
 
 .subtitle {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.7);
   margin-top: 4px;
   margin-left: 2px;
   font-weight: 400;
@@ -160,6 +212,32 @@ body {
 .header-right {
   display: flex;
   align-items: center;
+  gap: 1rem;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.1rem;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
 }
 
 .user-chip {
@@ -167,8 +245,8 @@ body {
   align-items: center;
   gap: 12px;
   padding: 6px 16px 6px 6px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -176,16 +254,16 @@ body {
 }
 
 .user-chip:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .user-avatar {
   width: 40px;
   height: 40px;
-  border: 2px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
 }
 
 .user-details {
@@ -207,14 +285,14 @@ body {
 
 .user-action {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
 }
 
 .pi-angle-down {
   color: white;
   font-size: 0.9rem;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .app-main {
@@ -225,20 +303,31 @@ body {
   margin: 0 auto;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - Light mode */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9; 
+  background: var(--surface-100); 
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1; 
+  background: var(--surface-400); 
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; 
+  background: var(--surface-500); 
+}
+
+/* Dark mode scrollbar */
+.app-dark ::-webkit-scrollbar-track {
+  background: var(--surface-800);
+}
+.app-dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+.app-dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
 }
 
 @media (max-width: 768px) {
@@ -253,6 +342,9 @@ body {
   .header-right {
     width: 100%;
     justify-content: center;
+  }
+  .user-details {
+    display: none;
   }
 }
 </style>
