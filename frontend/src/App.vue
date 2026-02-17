@@ -2,7 +2,7 @@
   <div class="app-container" :class="{ 'app-dark': isDarkMode }">
     <Toast />
     <ConfirmDialog />
-    <header class="app-header" v-if="!isLoginPage">
+    <header class="app-header">
       <div class="header-content">
         <!-- Logo Section -->
         <div class="header-left">
@@ -43,11 +43,12 @@
     <main class="app-main">
       <router-view />
     </main>
+
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
@@ -64,7 +65,6 @@ const menu = ref(null)
 // Dark mode state
 const isDarkMode = ref(false)
 
-const isLoginPage = computed(() => route.path === '/login')
 
 const menuItems = ref([
     {
@@ -103,10 +103,31 @@ function initTheme() {
         isDarkMode.value = savedTheme === 'dark'
     } else {
         // Auto-detect system preference
-        isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+        isDarkMode.value = mediaQuery.matches
+        
+        // Listen for system changes
+        mediaQuery.addEventListener('change', handleSystemThemeChange)
     }
     applyTheme()
 }
+
+function handleSystemThemeChange(e) {
+    if (!localStorage.getItem('theme')) {
+        isDarkMode.value = e.matches
+        applyTheme()
+    }
+}
+
+onMounted(() => {
+    initTheme()
+    checkUser()
+})
+
+onUnmounted(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    mediaQuery.removeEventListener('change', handleSystemThemeChange)
+})
 
 async function checkUser() {
     const auth = await api.checkAuth()
@@ -347,4 +368,5 @@ body {
     display: none;
   }
 }
+
 </style>
